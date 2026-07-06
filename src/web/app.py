@@ -65,13 +65,24 @@ async def get_status():
 
 @app.post("/api/config")
 async def update_config(config: ConfigUpdate):
+    was_running = mirror_client.is_running
+    if was_running:
+        mirror_client.stop_mirroring()
+        
     settings.update_env("API_ID", config.api_id)
     settings.update_env("API_HASH", config.api_hash)
     settings.update_env("SOURCE_CHANNEL", config.source_channel)
     settings.update_env("DESTINATION_CHANNEL", config.destination_channel)
     
-    # Re-initialize client if API keys changed
+    # Re-initialize client cleanly
+    if mirror_client.client and mirror_client.client.is_connected():
+        await mirror_client.client.disconnect()
+    
     mirror_client.init_client()
+    
+    if was_running:
+        await mirror_client.start_mirroring()
+        
     return {"status": "success"}
 
 @app.post("/api/login/send_code")
