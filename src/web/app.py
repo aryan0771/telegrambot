@@ -8,6 +8,7 @@ import os
 from src.config.settings import settings
 from src.telegram.client import mirror_client
 from src.utils.logger import logger
+from src.storage import db
 
 app = FastAPI(title="Telegram Mirror Dashboard")
 
@@ -127,6 +128,9 @@ async def toggle_bot():
 
 @app.on_event("startup")
 async def startup_event():
+    # Initialize the database tables
+    await db.init_db()
+    
     # Attempt to auto-start if fully configured and authorized
     is_authorized = await mirror_client.connect()
     if is_authorized:

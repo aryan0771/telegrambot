@@ -17,7 +17,8 @@ def main():
         
     # Start the web server. The Telegram bot starts dynamically within the FastAPI app.
     # We use import string to let uvicorn reload work (though reload=False by default)
-    uvicorn.run("src.web.app:app", host="0.0.0.0", port=8000, log_level="info")
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run("src.web.app:app", host="0.0.0.0", port=port, log_level="info")
 
 if __name__ == '__main__':
     try:
