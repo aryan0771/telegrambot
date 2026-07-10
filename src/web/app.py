@@ -4,6 +4,8 @@ from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 import os
+import asyncio
+import urllib.request
 
 from src.config.settings import settings
 from src.telegram.client import mirror_client
@@ -137,10 +139,30 @@ async def toggle_bot():
         else:
             raise HTTPException(status_code=400, detail="Failed to start. Check config and login status.")
 
+async def keep_alive():
+    url = os.environ.get("RENDER_EXTERNAL_URL")
+    if not url:
+        logger.info("RENDER_EXTERNAL_URL not set, skipping keep-alive cron.")
+        return
+    
+    logger.info(f"Starting keep-alive cron for {url}")
+    while True:
+        await asyncio.sleep(14 * 60) # 14 minutes
+        try:
+            def ping():
+                urllib.request.urlopen(f"{url}/api/status", timeout=10)
+            await asyncio.to_thread(ping)
+            logger.info("Keep-alive ping successful.")
+        except Exception as e:
+            logger.error(f"Keep-alive ping failed: {e}")
+
 @app.on_event("startup")
 async def startup_event():
     # Initialize the database tables
     await db.init_db()
+    
+    # Start the keep-alive cron task
+    asyncio.create_task(keep_alive())
     
     # Attempt to auto-start if fully configured and authorized
     is_authorized = await mirror_client.connect()
